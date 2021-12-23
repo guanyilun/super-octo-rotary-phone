@@ -1,0 +1,10 @@
+* super-octo-rotary-phone
+This is a julia learning project that implements a component
+separation algorithm for CMB experiment in Julia -- sorry I wish it is
+actually about a super octo rotary phone.
+
+Currently, the code is able to produce the same result as fgbuster
+with only 38 lines of code!
+
+Now that I have had enough fun writing obscure codes, it's time to
+rewrite it for performance, which is the next step.
