@@ -1,9 +1,9 @@
 using TensorOperations, LinearAlgebra, Optim
 
 # constants
-h_over_k = 0.04799243073366221
-GHz = 1.
-Tcmb = 2.726
+const h_over_k = 0.04799243073366221
+const GHz = 1.
+const Tcmb = 2.726
 
 # unit conversion
 KRJ_to_KCMB(ν) = ν/Tcmb*h_over_k |> x-> (exp.(x) .- 1).^2 / (exp.(x).*x.^2)  # everything in K_CMB
@@ -16,7 +16,7 @@ mixing_matrix(comps, ν; folder) = pars -> folder(pars) |> pars-> hcat([c(ν,p..
 
 𝔣LᵀA(N⁻¹, A) = N⁻¹.^(1/2) |> L -> svd(L.*A)
 𝔣logL(LᵀA, Lᵀd) = LᵀA.U' * Lᵀd |> Uᵀd -> sum(Uᵀd.^2)/2
-lnlike(A, N⁻¹, Lᵀd) = try sum(𝔣logL(𝔣LᵀA(N⁻¹[:,i],A), Lᵀd[:,i,:]) for i=1:size(obs,2)) catch; -Inf end
+lnlike(A, N⁻¹, Lᵀd) = try sum(𝔣logL(𝔣LᵀA(view(N⁻¹,:,i),A), view(Lᵀd, :,i,:)) for i=1:size(obs,2)) catch; -Inf end
 
 # build to-be-minimized function
 function build_target(comps, ν, N⁻¹, Lᵀd; folder)
@@ -25,8 +25,7 @@ end
 
 function compsep(comps, ν, N⁻¹, d; x₀=[-3.,1.54,20.])
     Lᵀd = N⁻¹.^(1/2) .* d
-    folder = fold(comps)
-    f = build_target(comps, ν, N⁻¹, Lᵀd; folder=folder)
+    f = build_target(comps, ν, N⁻¹, Lᵀd; folder=fold(comps))
     optimize(f, x₀, BFGS())
 end
 
