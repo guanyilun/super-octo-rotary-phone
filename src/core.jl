@@ -15,8 +15,8 @@ dust(ν, βd, Td; ν₀=150*GHz) = @. (exp(ν₀/Td*h_over_k)-1) / (exp(ν/Td*h_
 mixing_matrix(comps, ν; folder) = pars -> folder(pars) |> pars-> hcat([c(ν,p...) for (c, p) in zip(comps, pars)]...)
 
 𝔣LᵀA(N⁻¹, A) = N⁻¹.^(1/2) |> L -> svd(L.*A)
-𝔣logL(LᵀA, Lᵀd) = LᵀA.U' * Lᵀd |> Uᵀd -> sum(Uᵀd.^2)/2
-lnlike(A, N⁻¹, Lᵀd) = try sum(𝔣logL(𝔣LᵀA(view(N⁻¹,:,i),A), view(Lᵀd, :,i,:)) for i=1:size(obs,2)) catch; -Inf end
+𝔣logL(LᵀA, Lᵀd) = LᵀA.U' * Lᵀd |> Uᵀd -> (Uᵀd .^= 2; sum(Uᵀd)/2)
+lnlike(A, N⁻¹, Lᵀd) = try sum(𝔣logL(𝔣LᵀA(view(N⁻¹,:,i),A), view(Lᵀd,:,i,:)) for i=1:size(Lᵀd,2)) catch; -Inf end
 
 # build to-be-minimized function
 function build_target(comps, ν, N⁻¹, Lᵀd; folder)
