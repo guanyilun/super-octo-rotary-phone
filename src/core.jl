@@ -1,4 +1,4 @@
-using TensorOperations, LinearAlgebra, Optim
+using TensorOperations, LinearAlgebra, Optim, FiniteDiff
 
 # constants
 const h_over_k = 0.04799243073366221
@@ -17,16 +17,13 @@ mixing_matrix(comps, ν; folder) = pars -> folder(pars) |> pars-> hcat([c(ν,p..
 
 𝔣LᵀA(N⁻¹, A) = [svd!(N⁻¹[:,i].^0.5 .* A) for i = 1:size(N⁻¹,2)]
 𝔣logL(LᵀA, Lᵀd) = LᵀA.U' * Lᵀd |> Uᵀd -> (Uᵀd .^= 2; sum(Uᵀd)/2)
-# this is the fastest way of slicing that I found
-lnlike(LᵀA, Lᵀd) = try sum(𝔣logL(LᵀA[i], A), view(Lᵀd,:,i,:)) for i=1:size(Lᵀd,2)) catch; -Inf end
+lnlike(LᵀA, Lᵀd) = try sum([𝔣logL(LᵀA[i], view(Lᵀd,:,i,:)) for i=1:size(Lᵀd,2)]) catch; -Inf end
 
 # build to-be-minimized function
 function build_target(comps, ν, N⁻¹, Lᵀd)
     folder = fold(comps)
     mm = mixing_matrix(comps, ν; folder=folder)
-    # target function
     f(pars) = try (LᵀA = 𝔣LᵀA(N⁻¹, mm(pars)); -lnlike(LᵀA, Lᵀd)) catch e; -Inf end
-    # jacobian of target function: I computed it numerically because its slower to use analytic expression for some reason
     g!(storage, pars) = (res = FiniteDiff.finite_difference_jacobian(f, pars); storage[:] = res)
     f, g!
 end
