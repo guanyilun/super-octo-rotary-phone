@@ -20,11 +20,10 @@ mixing_matrix(comps, ν; folder) = pars -> folder(pars) |> pars-> hcat([c(ν,p..
 lnlike(LᵀA, Lᵀd) = try sum([𝔣logL(LᵀA[i], view(Lᵀd,:,i,:)) for i=1:size(Lᵀd,2)]) catch; -Inf end
 
 # build to-be-minimized function
-function build_target(comps, ν, N⁻¹, Lᵀd)
-    folder = fold(comps)
-    mm = mixing_matrix(comps, ν; folder=folder)
-    f(pars) = try (LᵀA = 𝔣LᵀA(N⁻¹, mm(pars)); -lnlike(LᵀA, Lᵀd)) catch e; -Inf end
-    g!(storage, pars) = (res = FiniteDiff.finite_difference_jacobian(f, pars); storage[:] = res)
+function build_target(comps, ν, N⁻¹, Lᵀd; mm=nothing)
+    mm = ifelse(mm == nothing, mixing_matrix(comps, ν; folder=fold(comps)), mm)
+    f(pars) = try 𝔣LᵀA(N⁻¹, mm(pars)) |> LᵀA -> -lnlike(LᵀA, Lᵀd) catch; -Inf end
+    g!(storage, pars) = FiniteDiff.finite_difference_jacobian(f, pars) |> res->storage[:]=res
     f, g!
 end
 
@@ -35,6 +34,6 @@ function compsep(comps, ν, N⁻¹, d; x₀=[-3.,1.54,20.], use_jac=false, algo=
 end
 
 # utility functions
-parse_sigs(comps) = map(c->methods(c)[1].nargs-2, comps) |> cumsum |> x->[1;x[1:end-1].+1;;x] |> x->map((b,e)->range(b,e),x[:,1],x[:,2])
-fold(comps) = (sigs=parse_sigs(comps); params -> (params |> p -> map(sl->p[sl], sigs)))
+parse_sigs(comps; nskip=1) = map(c->methods(c)[1].nargs-1-nskip, comps) |> cumsum |> x->[1;x[1:end-1].+1;;x] |> x->map((b,e)->range(b,e),x[:,1],x[:,2])
+fold(comps; nskip=1) = (sigs=parse_sigs(comps, nskip=nskip); params -> (params |> p -> map(sl->p[sl], sigs)))
 unfold(params) = params |> x -> vcat(x...)
