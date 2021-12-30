@@ -1,4 +1,4 @@
-using TensorOperations, LinearAlgebra, Optim, FiniteDiff
+using TensorOperations, LinearAlgebra, Optim, FiniteDiff, LoopVectorization
 
 # constants
 const h_over_k = 0.04799243073366221
@@ -16,7 +16,17 @@ dust(ν, βd, Td; ν₀=150*GHz) = @. (exp(ν₀/Td*h_over_k)-1) / (exp(ν/Td*h_
 mixing_matrix(comps, ν; folder) = pars -> folder(pars) |> pars-> hcat([c(ν,p...) for (c, p) in zip(comps, pars)]...)
 
 𝔣LᵀA(N⁻¹, A) = [svd!(N⁻¹[:,i].^0.5 .* A) for i = 1:size(N⁻¹,2)]
-𝔣logL(LᵀA, Lᵀd) = LᵀA.U' * Lᵀd |> Uᵀd -> (Uᵀd .^= 2; sum(Uᵀd)/2)
+function 𝔣logL(LᵀA, Lᵀd)
+    s = 0
+    @tturbo for k in eachindex(axes(Lᵀd,2)), j in eachindex(axes(LᵀA.U,2))
+        sjk = 0
+        for i in eachindex(axes(LᵀA.U,1))
+            sjk += LᵀA.U[i,j] * Lᵀd[i,k]
+        end
+        s += sjk^2/2
+    end
+    s
+end
 lnlike(LᵀA, Lᵀd) = try sum([𝔣logL(LᵀA[i], view(Lᵀd,:,i,:)) for i=1:size(Lᵀd,2)]) catch; -Inf end
 
 # build to-be-minimized function
