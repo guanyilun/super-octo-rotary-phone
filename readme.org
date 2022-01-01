@@ -44,11 +44,12 @@ res = compsep(comps, freqs, Nmat, obs, x₀=[-3,1.54,20.])
 #+BEGIN_SRC julia
 # same as before
 nside = 8
-res = compsep(comps, freqs, Nmat.^-2, obs, nside; x₀=[-3,1.54,20.])
+res = compsep(comps, freqs, Nmat, obs, nside; x₀=[-3,1.54,20.])
 #+END_SRC
 
 *** bandpass integration
 #+BEGIN_SRC julia
+# same as before
 bands = SimplePassband.(instrument.frequency.values, instrument.bandwidth.values)
 res = compsep(comps, bands, Nmat, obs, x₀=[-3,1.54,20.])
 #+END_SRC
