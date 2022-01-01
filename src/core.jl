@@ -1,4 +1,4 @@
-using TensorOperations, LinearAlgebra, Optim, FiniteDiff, LoopVectorization, PyCall, Debugger
+using TensorOperations, LinearAlgebra, Optim, FiniteDiff, LoopVectorization, PyCall, Debugger, NumericalIntegration
 @pyimport healpy as hp
 
 # constants
@@ -14,8 +14,8 @@ cmb(ν) = @. ν*0+1
 sync(ν, β; ν₀=20*GHz) = @. (ν/ν₀)^β * KRJ_to_KCMB(ν) / KRJ_to_KCMB(ν₀)
 dust(ν, βd, Td; ν₀=150*GHz) = @. (exp(ν₀/Td*h_over_k)-1) / (exp(ν/Td*h_over_k)-1)*(ν/ν₀)^(1+βd) * KRJ_to_KCMB(ν) / KRJ_to_KCMB(ν₀)
 
-mixing_matrix(comps, ν) = pars -> fold(comps)(pars) |> pars-> hcat([c(ν,p...) for (c, p) in zip(comps, pars)]...)
-mixing_matrix(comps, ν; folder) = pars -> folder(pars) |> pars-> hcat([c(ν,p...) for (c, p) in zip(comps, pars)]...)
+mixing_matrix(comps, ν) = (folder = fold(comps); pars -> folder(pars) |> pars-> hcat([c(ν,p...) for (c, p) in zip(comps, pars)]...))
+mixing_matrix(comps, ν; folder) = (pars -> folder(pars) |> pars-> hcat([c(ν,p...) for (c, p) in zip(comps, pars)]...))
 
 𝔣LᵀA(N⁻¹, A) = [svd!(N⁻¹[:,i].^0.5 .* A) for i = 1:size(N⁻¹,2)]
 function 𝔣logL(LᵀA, Lᵀd)
@@ -57,6 +57,27 @@ function compsep(comps, ν, N⁻¹, d, nside; mask::Union{BitArray{1},Nothing}=n
     res
 end
 
+# for bandpass integration
+struct SimplePassband
+    lo::AbstractFloat
+    hi::AbstractFloat
+    SimplePassband(center, width) = new(center-width/2, center+width/2)
+end
+
+# to work with bandpass integration: note that this can be ~100 times slower
+function mixing_matrix(comps, bands::Vector{SimplePassband}; npoints=10, method=TrapezoidalEvenFast())
+    folder = fold(comps)
+    function mm(pars)
+        pars = folder(pars)
+        A = zeros(Float64, length(bands), length(comps))
+        for i = 1:length(comps), j = 1:length(bands)
+            ν = LinRange(bands[j].lo, bands[j].hi, npoints)
+            A[j,i] = integrate(ν, comps[i](ν,pars[i]...), method) / (bands[j].hi-bands[j].lo)
+        end
+        A
+    end
+end
+
 # utility functions
 function build_masks(nside, obs; mask::Union{BitArray{1},Nothing}=nothing) where T
     npix = hp.nside2npix(nside)
@@ -66,4 +87,3 @@ function build_masks(nside, obs; mask::Union{BitArray{1},Nothing}=nothing) where
 end
 parse_sigs(comps; nskip=1) = map(c->methods(c)[1].nargs-1-nskip, comps) |> cumsum |> x->[1;x[1:end-1].+1;;x] |> x->map((b,e)->range(b,e),x[:,1],x[:,2])
 fold(comps; nskip=1) = (sigs=parse_sigs(comps, nskip=nskip); params -> (params |> p -> map(sl->p[sl], sigs)))
-unfold(params) = params |> x -> vcat(x...)

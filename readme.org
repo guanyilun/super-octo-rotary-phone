@@ -21,7 +21,41 @@ nside=8, it is ~300-400 times faster than fgbuster.
 # result: 60.788 ms (420728 allocations: 32.63 MiB)
 #+END_SRC
 
-The repo is very simplistic now. Some next steps include
+** Examples
+*** Basic
+#+BEGIN_SRC julia
+using PyCall
+
+# obtain simulated data using fgbuster
+@pyimport fgbuster
+sky = fgbuster.observation_helpers.get_sky(nside=32, tag="c1d0s0")
+instrument = fgbuster.observation_helpers.get_instrument("LiteBIRD");
+obs = fgbuster.observation_helpers.get_observation(instrument, sky, noise=true);
+freqs = instrument.frequency.values
+Nmat = hcat(instrument.depth_i.values,instrument.depth_p.values,instrument.depth_p.values).^-2
+
+# define components of interests, each of which is a function of frequency and other predefined parameters
+comps = [cmb, sync, dust]
+
+# perform simple component separation
+res = compsep(comps, freqs, Nmat, obs, x₀=[-3,1.54,20.])
+#+END_SRC
+*** Multi-resolution removal
+#+BEGIN_SRC julia
+# same as before
+nside = 8
+res = compsep(comps, freqs, Nmat.^-2, obs, nside; x₀=[-3,1.54,20.])
+#+END_SRC
+
+*** bandpass integration
+#+BEGIN_SRC julia
+bands = SimplePassband.(instrument.frequency.values, instrument.bandwidth.values)
+res = compsep(comps, bands, Nmat, obs, x₀=[-3,1.54,20.])
+#+END_SRC
+
+** Next steps
 - [X] allow passing in mask
 - [X] allow multi-resolution
-- [ ] bandpass integration
+- [X] bandpass integration
+- [ ] add functions to postprocess results
+- [ ] more documentation
