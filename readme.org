@@ -7,8 +7,9 @@ Currently, the code is able to produce the same result as fgbuster
 with only 38 lines of code!
 
 Now that I have had enough fun writing obscure codes, it's time to
-rewrite it for performance. The highest performance is in
-=performance= branch which is roughly 100 times faster than fgbuster.
+rewrite it for performance. For a single pixel search, it is roughly
+100 times faster than fgbuster. For a multi-resolution search with
+nside=8, it is ~300-400 times faster than fgbuster.
 
 #+BEGIN_SRC julia
 @btime fgbuster.basic_comp_sep($components, $instrument, $obs; tol=1);
@@ -22,5 +23,5 @@ rewrite it for performance. The highest performance is in
 
 The repo is very simplistic now. Some next steps include
 - [X] allow passing in mask
-- [ ] allow multi-resolution
+- [X] allow multi-resolution
 - [ ] bandpass integration
