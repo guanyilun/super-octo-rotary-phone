@@ -1,4 +1,5 @@
-using TensorOperations, LinearAlgebra, Optim, FiniteDiff, LoopVectorization
+using TensorOperations, LinearAlgebra, Optim, FiniteDiff, LoopVectorization, PyCall, Debugger
+@pyimport healpy as hp
 
 # constants
 const h_over_k = 0.04799243073366221
@@ -38,17 +39,31 @@ function build_target(comps, ν, N⁻¹, Lᵀd; mm=nothing, use_jac=false)
 end
 
 # main interface
-function compsep(comps, ν, N⁻¹, d; x₀=[-3.,1.54,20.], use_jac=false, algo=BFGS(), options=Optim.Options(f_abstol=1))
+function compsep(comps, ν, N⁻¹, d; mask::Union{BitArray{1},Nothing}=nothing, x₀=[-3.,1.54,20.],
+                 use_jac=false, algo=BFGS(), options=Optim.Options(f_abstol=1))
+    if mask isa BitArray{1}; d = d[:,:,mask] end
     Lᵀd = N⁻¹.^0.5 .* d
     f, g! = build_target(comps, ν, N⁻¹, Lᵀd, use_jac=use_jac)
-    use_jac ? optimize(f, g!, x₀, algo, options) : optimize(f, x₀, algo, options)
+    res = use_jac ? optimize(f, g!, x₀, algo, options) : optimize(f, x₀, algo, options)
+    res
 end
-function compsep(comps, ν, N⁻¹, d, mask; x₀=[-3.,1.54,20.], use_jac=false, algo=BFGS(), options=Optim.Options(f_abstol=1))
-    d = d[:,:,mask]
-    compsep(comps, ν, N⁻¹, d; x₀=x₀, use_jac=use_jac, algo=algo, options=options)
+
+function compsep(comps, ν, N⁻¹, d, nside; mask::Union{BitArray{1},Nothing}=nothing, x₀=[-3.,1.54,20.],
+                 use_jac=false, algo=BFGS(), options=Optim.Options(f_abstol=1))
+    if nside == 0; return compsep(comps, ν, N⁻¹, d; mask=mask, x₀=x₀, use_jac=use_jac, algo=algo, options=options) end
+    masks = build_masks(nside, obs, mask=mask)
+    res = Array{Any}(undef, length(masks))
+    Threads.@threads for i in 1:length(masks); res[i] = compsep(comps, ν, N⁻¹, d; mask=masks[i], x₀=x₀, use_jac=use_jac, algo=algo, options=options) end
+    res
 end
 
 # utility functions
+function build_masks(nside, obs; mask::Union{BitArray{1},Nothing}=nothing) where T
+    npix = hp.nside2npix(nside)
+    patch_ids = hp.ud_grade(collect(1:npix), hp.npix2nside(size(obs,3)))
+    if mask isa Nothing; return [(patch_ids .== i) for i = 1:npix]
+    else; return [(patch_ids .== i) .& mask for i = 1:npix] end
+end
 parse_sigs(comps; nskip=1) = map(c->methods(c)[1].nargs-1-nskip, comps) |> cumsum |> x->[1;x[1:end-1].+1;;x] |> x->map((b,e)->range(b,e),x[:,1],x[:,2])
 fold(comps; nskip=1) = (sigs=parse_sigs(comps, nskip=nskip); params -> (params |> p -> map(sl->p[sl], sigs)))
 unfold(params) = params |> x -> vcat(x...)
