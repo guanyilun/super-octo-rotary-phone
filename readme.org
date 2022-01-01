@@ -21,6 +21,6 @@ rewrite it for performance. The highest performance is in
 #+END_SRC
 
 The repo is very simplistic now. Some next steps include
-- [ ] allow passing in mask
+- [X] allow passing in mask
 - [ ] allow multi-resolution
 - [ ] bandpass integration

@@ -43,6 +43,10 @@ function compsep(comps, ν, N⁻¹, d; x₀=[-3.,1.54,20.], use_jac=false, algo=
     f, g! = build_target(comps, ν, N⁻¹, Lᵀd, use_jac=use_jac)
     use_jac ? optimize(f, g!, x₀, algo, options) : optimize(f, x₀, algo, options)
 end
+function compsep(comps, ν, N⁻¹, d, mask; x₀=[-3.,1.54,20.], use_jac=false, algo=BFGS(), options=Optim.Options(f_abstol=1))
+    d = d[:,:,mask]
+    compsep(comps, ν, N⁻¹, d; x₀=x₀, use_jac=use_jac, algo=algo, options=options)
+end
 
 # utility functions
 parse_sigs(comps; nskip=1) = map(c->methods(c)[1].nargs-1-nskip, comps) |> cumsum |> x->[1;x[1:end-1].+1;;x] |> x->map((b,e)->range(b,e),x[:,1],x[:,2])
