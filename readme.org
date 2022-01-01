@@ -7,4 +7,20 @@ Currently, the code is able to produce the same result as fgbuster
 with only 38 lines of code!
 
 Now that I have had enough fun writing obscure codes, it's time to
-rewrite it for performance, which is the next step.
+rewrite it for performance. The highest performance is in
+=performance= branch which is roughly 100 times faster than fgbuster.
+
+#+BEGIN_SRC julia
+@btime fgbuster.basic_comp_sep($components, $instrument, $obs; tol=1);
+
+# result: 5.679 s (699 allocations: 23.70 MiB)
+
+@btime res = compsep($comps, $freqs, $Nmat.^-2, $obs, x₀=[-3,1.5,15.]);
+
+# result: 60.788 ms (420728 allocations: 32.63 MiB)
+#+END_SRC
+
+The repo is very simplistic now. Some next steps include
+- [ ] allow passing in mask
+- [ ] allow multi-resolution
+- [ ] bandpass integration
