@@ -1,4 +1,4 @@
-using TensorOperations, LinearAlgebra, Optim, FiniteDiff, LoopVectorization, PyCall, Debugger, NumericalIntegration
+using TensorOperations, LinearAlgebra, Optim, FiniteDiff, LoopVectorization, PyCall, NumericalIntegration
 @pyimport healpy as hp
 
 # constants
@@ -31,7 +31,7 @@ lnlike(LᵀA, Lᵀd) = try sum([𝔣logL(LᵀA[i], view(Lᵀd,:,i,:)) for i=1:si
 
 # build to-be-minimized function
 function build_target(comps, ν, N⁻¹, Lᵀd; mm=nothing, use_jac=false)
-    mm = ifelse(mm == nothing, mixing_matrix(comps, ν; folder=fold(comps)), mm)
+    mm = isnothing(mm) ? mixing_matrix(comps, ν; folder=fold(comps)) : mm
     f(pars) = try 𝔣LᵀA(N⁻¹, mm(pars)) |> LᵀA -> -lnlike(LᵀA, Lᵀd) catch; -Inf end
     if use_jac; g!(storage, pars) = FiniteDiff.finite_difference_jacobian(f, pars) |> res->storage[:]=res
     else g! = ()->() end # do nothing
@@ -70,7 +70,7 @@ function mixing_matrix(comps, bands::Vector{SimplePassband}; npoints=10, method=
     function mm(pars)
         pars = folder(pars)
         A = zeros(Float64, length(bands), length(comps))
-        for i = 1:length(comps), j = 1:length(bands)
+        for i in eachindex(comps), j in eachindex(bands)
             ν = LinRange(bands[j].lo, bands[j].hi, npoints)
             A[j,i] = integrate(ν, comps[i](ν,pars[i]...), method) / (bands[j].hi-bands[j].lo)
         end
