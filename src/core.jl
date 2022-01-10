@@ -72,13 +72,13 @@ end
 # add support for multi-resolution search
 function compsep(comps, ν, N⁻¹, d, nside; mask::Union{BitArray{1},Nothing} = nothing, x₀ = [-3.0, 1.54, 20.0],
     use_jac = false, algo = BFGS(), options = Optim.Options(f_abstol = 1))
-    (nside == 0) && (compsep(comps, ν, N⁻¹, d; mask=mask, x₀=x₀, use_jac=use_jac, algo=algo, options=options))
-    masks = build_masks(nside, obs; mask=mask)
+    (nside == 0) && (return compsep(comps, ν, N⁻¹, d; mask=mask, x₀=x₀, use_jac=use_jac, algo=algo, options=options))
+    masks = build_masks(nside, d; mask=mask)
     res = Array{Any}(undef, length(masks))
     Threads.@threads for i in 1:length(masks)
         res[i] = compsep(comps, ν, N⁻¹, d; mask = masks[i], x₀ = x₀, use_jac = use_jac, algo = algo, options = options)
     end
-    res
+    reduce_multires(res)
 end
 
 # for bandpass integration
@@ -112,3 +112,18 @@ function build_masks(nside, obs; mask::Union{BitArray{1},Nothing}=nothing) where
 end
 parse_sigs(comps; nskip=1) = map(c->methods(c)[1].nargs-1-nskip, comps) |> cumsum |> x->[1;x[1:end-1].+1;;x] |> x->map((b,e)->range(b,e),x[:,1],x[:,2])
 fold(comps; nskip=1) = (sigs=parse_sigs(comps, nskip=nskip); params -> (params |> p -> map(sl->p[sl], sigs)))
+function reduce_multires(res)
+    resd = Dict()
+    for (i,r) in enumerate(res)
+        if i == 1
+            resd["s"] = r["s"]
+            resd["params"] = [r["params"]]
+            resd["res"] = [r["res"]]
+        else
+            resd["s"] .+= r["s"]
+            push!(resd["params"], r["params"])
+            push!(resd["res"], r["res"])
+        end
+    end
+    resd
+end

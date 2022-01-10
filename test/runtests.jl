@@ -43,7 +43,7 @@ end
     LᵀA = CompSep.𝔣LᵀA(Nmat, A)
     res = CompSep.𝔣s(LᵀA, obs)
     # listing full matrix is too long, just test aggregated result here
-    @test sum(res) == 4.715942015365858e6
+    @test sum(res) == 1.1783433720266577e6
     # more to add
 end
 
@@ -62,6 +62,12 @@ end
     res = compsep(comps, freqs, Nmat, obs; mask = mask)
     @test isapprox(res["params"], [-3, 1.54, 20.0], rtol = 0.01)
     @test all(res["s"][:, :, map(!, mask)] .== 0)
+end
+
+@testset "compsep w/ multiresol" begin
+    nside = 2
+    res = compsep(comps, freqs, Nmat, obs, nside; x₀ = [-3, 1.54, 20.0]);
+    @test map(x->isapprox(x, [-3,1.54,20.0], rtol=0.01), res["params"]) |> all
 end
 
 # performance testing
