@@ -2,15 +2,15 @@ using PyCall
 using Test
 using CompSep
 
-@pyimport fgbuster
+@pyimport fgbuster;
 
-sky = fgbuster.observation_helpers.get_sky(nside = 64, tag = "c1d0s0")
-instrument = fgbuster.observation_helpers.get_instrument("LiteBIRD")
-obs = fgbuster.observation_helpers.get_observation(instrument, sky, noise = false)
+sky = fgbuster.observation_helpers.get_sky(nside = 32, tag = "c1d0s0");
+instrument = fgbuster.observation_helpers.get_instrument("LiteBIRD");
+obs = fgbuster.observation_helpers.get_observation(instrument, sky, noise = false);
 
 comps = [cmb, sync, dust]
-freqs = instrument.frequency.values
-Nmat = hcat(instrument.depth_i.values, instrument.depth_p.values, instrument.depth_p.values)
+freqs = instrument.frequency.values;
+Nmat = hcat(instrument.depth_i.values, instrument.depth_p.values, instrument.depth_p.values);
 
 @testset "SED" begin
     @test cmb(10) == 1
@@ -39,18 +39,29 @@ A = mixing_matrix(comps, freqs)([1, 1, 1])
     ]
 end
 
-@testset "compsep" begin
+@testset "linear algebra" begin
     LᵀA = CompSep.𝔣LᵀA(Nmat, A)
     res = CompSep.𝔣s(LᵀA, obs)
     # listing full matrix is too long, just test aggregated result here
     @test sum(res) == 4.715942015365858e6
-    res = compsep(comps, freqs, Nmat, obs, x₀ = [-3, 1.54, 20.0])
-    @test isapprox(res["params"], [-3, 1.54, 20.0], rtol = 0.01)
+    # more to add
 end
 
 @testset "utils" begin
     mask = CompSep.build_masks(8, obs)
     @test all(sum(mask) == ones(Int64, size(obs, 3)))
+end
+
+@testset "compsep" begin
+    res = compsep(comps, freqs, Nmat, obs, x₀ = [-3, 1.54, 20.0])
+    @test isapprox(res["params"], [-3, 1.54, 20.0], rtol = 0.01)
+end
+
+@testset "compsep w/ mask" begin
+    mask = collect(1:size(obs, 3)) .> size(obs, 3) / 2
+    res = compsep(comps, freqs, Nmat, obs; mask = mask)
+    @test isapprox(res["params"], [-3, 1.54, 20.0], rtol = 0.01)
+    @test all(res["s"][:, :, map(!, mask)] .== 0)
 end
 
 # performance testing

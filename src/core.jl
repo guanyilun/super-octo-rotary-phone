@@ -31,13 +31,13 @@ end
 # loop over stokes
 lnlike(LᵀA, Lᵀd) = try sum([𝔣logL(LᵀA[i], view(Lᵀd,:,i,:)) for i=1:size(Lᵀd,2)]) catch; -Inf end
 # get ml signal
-function 𝔣s(LᵀA, Lᵀd)
-    out=zeros(Float64,size(LᵀA[1].U,2),size(Lᵀd)[2:end]...)
+function 𝔣s!(LᵀA, Lᵀd, out)
     for i = 1:length(LᵀA)
         view(out,:,i,:) .= Octavian.matmul(LᵀA[i].V*(LᵀA[i].U'./LᵀA[i].S), view(Lᵀd,:,i,:))
     end
     out
 end
+𝔣s(LᵀA, Lᵀd) = (out=zeros(Float64,size(LᵀA[1].U,2),size(Lᵀd)[2:end]...); 𝔣s!(LᵀA, Lᵀd, out))
 
 function build_target(comps, ν, N⁻¹, Lᵀd; mm=nothing, use_jac=false)
     mm = isnothing(mm) ? mixing_matrix(comps, ν) : mm
@@ -50,12 +50,11 @@ end
 # main interface
 function compsep(comps, ν, N⁻¹, d; mask::Union{BitArray{1},Nothing} = nothing, x₀ = [-3.0, 1.54, 20.0],
     use_jac = false, algo = BFGS(), options = Optim.Options(f_abstol = 1))
-    !isnothing(mask) && (d = d[:, :, mask])
-    Lᵀd = N⁻¹ .^ 0.5 .* d
+    # note that we have assumed that the mask applied to all stoke parameters equally
+    Lᵀd = isnothing(mask) ? N⁻¹ .^ 0.5 .* d : N⁻¹ .^ 0.5 .* view(d,:,:,mask)
     mm = mixing_matrix(comps, ν)
     f, g! = build_target(comps, ν, N⁻¹, Lᵀd; mm=mm, use_jac = use_jac)
     res = use_jac ? optimize(f, g!, x₀, algo, options) : optimize(f, x₀, algo, options)
-
     # postprocess results
     out = Dict()
     out["res"] = res
@@ -64,7 +63,9 @@ function compsep(comps, ν, N⁻¹, d; mask::Union{BitArray{1},Nothing} = nothin
     # recover mixing matrix
     A = mm(out["params"])
     out["A"] = A
-    out["s"] = 𝔣s(𝔣LᵀA(N⁻¹,A), Lᵀd)
+    # get signal matrix s
+    s = zeros(Float64, size(A, 2), size(d)[2:end]...)
+    out["s"] = isnothing(mask) ? 𝔣s!(𝔣LᵀA(N⁻¹,A), Lᵀd, s) : (𝔣s!(𝔣LᵀA(N⁻¹,A), Lᵀd, view(s,:,:,mask)); s)
     out
 end
 
