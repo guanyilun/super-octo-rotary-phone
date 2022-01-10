@@ -1,5 +1,3 @@
-# @pyimport healpy as hp
-
 # constants
 const h_over_k = 0.04799243073366221
 const GHz = 1.
@@ -74,7 +72,7 @@ end
 function compsep(comps, ν, N⁻¹, d, nside; mask::Union{BitArray{1},Nothing} = nothing, x₀ = [-3.0, 1.54, 20.0],
     use_jac = false, algo = BFGS(), options = Optim.Options(f_abstol = 1))
     (nside == 0) && (compsep(comps, ν, N⁻¹, d; mask=mask, x₀=x₀, use_jac=use_jac, algo=algo, options=options))
-    masks = build_masks(nside, obs, mask = mask)
+    masks = build_masks(nside, obs; mask=mask)
     res = Array{Any}(undef, length(masks))
     Threads.@threads for i in 1:length(masks)
         res[i] = compsep(comps, ν, N⁻¹, d; mask = masks[i], x₀ = x₀, use_jac = use_jac, algo = algo, options = options)
@@ -104,11 +102,12 @@ function mixing_matrix(comps, bands::Vector{SimplePassband}; npoints=10, method=
 end
 
 # utility functions
-# function build_masks(nside, obs; mask::Union{BitArray{1},Nothing}=nothing) where T
-    # npix = hp.nside2npix(nside)
-    # patch_ids = hp.ud_grade(collect(1:npix), hp.npix2nside(size(obs,3)))
-    # isnothing(mask) && (return [(patch_ids .== i) for i = 1:npix])
-    # return [(patch_ids .== i) .& mask for i = 1:npix]
-# end
+function build_masks(nside, obs; mask::Union{BitArray{1},Nothing}=nothing) where T
+    npix = Healpix.nside2npix(nside)
+    ids_lo = Healpix.HealpixMap{Int64,RingOrder}(1:npix)
+    ids_hi = Healpix.udgrade(ids_lo, Healpix.npix2nside(size(obs,3)))
+    isnothing(mask) && (return [(ids_hi .== i) for i = 1:npix])
+    return [(ids_hi .== i) .& mask for i = 1:npix]
+end
 parse_sigs(comps; nskip=1) = map(c->methods(c)[1].nargs-1-nskip, comps) |> cumsum |> x->[1;x[1:end-1].+1;;x] |> x->map((b,e)->range(b,e),x[:,1],x[:,2])
 fold(comps; nskip=1) = (sigs=parse_sigs(comps, nskip=nskip); params -> (params |> p -> map(sl->p[sl], sigs)))

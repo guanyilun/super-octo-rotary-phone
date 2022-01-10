@@ -43,6 +43,9 @@ res = compsep(comps, freqs, Nmat, obs, x₀ = [-3, 1.54, 20.0])
 
 @test isapprox(res["params"], [-3, 1.54, 20.0], rtol=0.01)
 
+mask = CompSep.build_masks(8, obs)
+@test all(sum(mask) == ones(Int64, size(obs,3)))
+
 # performance testing
 
 # @btime 𝔣s($LᵀA, $obs);

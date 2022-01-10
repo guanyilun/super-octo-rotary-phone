@@ -5,11 +5,11 @@ version = "0.1.0"
 
 [deps]
 FiniteDiff = "6a86dc24-6348-571c-b903-95158fe2bd41"
+Healpix = "9f4e344d-96bc-545a-84a3-ae6b9e1b672b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
 NumericalIntegration = "e7bfaba1-d571-5449-8927-abc22e82249b"
 Octavian = "6fd5a793-0b7e-452c-907f-f8bfe9c57db4"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
-TensorOperations = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
