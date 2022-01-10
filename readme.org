@@ -1,15 +1,17 @@
-* super-octo-rotary-phone
-This is a julia learning project that implements a component
-separation algorithm for CMB experiment in Julia -- sorry I wish it is
-actually about a super octo rotary phone.
+* CompSep.jl
+A julia implementation of parametrized component separation algorithm
+for CMB experiment, following fgbuster which is a python
+implementation -- sorry I wish it is actually about a super octo
+rotary phone.
 
 Currently, the code is able to produce the same result as fgbuster,
 despite being significantly shorter.
 
 Now that I have had enough fun writing obscure codes, it's time to
-rewrite it for performance. For a single pixel search, it is roughly
-100 times faster than fgbuster. For a multi-resolution search with
-nside=8, it is ~300-400 times faster than fgbuster.
+rewrite it for performance and maintainability, so help is welcomed!
+For a single pixel search, it is roughly 100 times faster than
+fgbuster. For a multi-resolution search with nside=8, it is ~300-400
+times faster than fgbuster.
 
 #+BEGIN_SRC julia
 @btime fgbuster.basic_comp_sep($components, $instrument, $obs; tol=1);
