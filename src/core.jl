@@ -1,13 +1,4 @@
-using TensorOperations
-using LinearAlgebra
-using Optim
-using FiniteDiff
-using LoopVectorization
-using PyCall
-using NumericalIntegration
-using Octavian
-
-@pyimport healpy as hp
+# @pyimport healpy as hp
 
 # constants
 const h_over_k = 0.04799243073366221
@@ -113,11 +104,11 @@ function mixing_matrix(comps, bands::Vector{SimplePassband}; npoints=10, method=
 end
 
 # utility functions
-function build_masks(nside, obs; mask::Union{BitArray{1},Nothing}=nothing) where T
-    npix = hp.nside2npix(nside)
-    patch_ids = hp.ud_grade(collect(1:npix), hp.npix2nside(size(obs,3)))
-    isnothing(mask) && (return [(patch_ids .== i) for i = 1:npix])
-    return [(patch_ids .== i) .& mask for i = 1:npix]
-end
+# function build_masks(nside, obs; mask::Union{BitArray{1},Nothing}=nothing) where T
+    # npix = hp.nside2npix(nside)
+    # patch_ids = hp.ud_grade(collect(1:npix), hp.npix2nside(size(obs,3)))
+    # isnothing(mask) && (return [(patch_ids .== i) for i = 1:npix])
+    # return [(patch_ids .== i) .& mask for i = 1:npix]
+# end
 parse_sigs(comps; nskip=1) = map(c->methods(c)[1].nargs-1-nskip, comps) |> cumsum |> x->[1;x[1:end-1].+1;;x] |> x->map((b,e)->range(b,e),x[:,1],x[:,2])
 fold(comps; nskip=1) = (sigs=parse_sigs(comps, nskip=nskip); params -> (params |> p -> map(sl->p[sl], sigs)))

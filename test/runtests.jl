@@ -1,12 +1,10 @@
 using PyCall
 using Test
-using BenchmarkTools
-
-include("../src/core.jl")
+using CompSep
 
 @pyimport fgbuster
 
-sky = fgbuster.observation_helpers.get_sky(nside = 64, tag = "c1d0s0")
+sky = fgbuster.observation_helpers.get_sky(nside=64, tag="c1d0s0")
 instrument = fgbuster.observation_helpers.get_instrument("LiteBIRD")
 obs = fgbuster.observation_helpers.get_observation(instrument, sky, noise=false)
 
@@ -14,7 +12,6 @@ comps = [cmb, sync, dust]
 freqs = instrument.frequency.values
 Nmat = hcat(instrument.depth_i.values, instrument.depth_p.values, instrument.depth_p.values)
 
-@test KRJ_to_KCMB(10) == 1.0025855995398942
 @test cmb(10) == 1
 @test sync(10, 1) == 0.4961455328647282
 
@@ -37,11 +34,11 @@ A = mixing_matrix(comps, freqs)([1, 1, 1])
     1.0 469.79084931558725 0.0005464803027606633
 ]
 
-LᵀA = 𝔣LᵀA(Nmat, A)
-res = 𝔣s(LᵀA, obs)
+LᵀA = CompSep.𝔣LᵀA(Nmat, A)
+res = CompSep.𝔣s(LᵀA, obs)
 
 # listing full matrix is too long, just test aggregated result here
-@test sum(res) == -2.4736592014096767e8
+@test sum(res) == 4.715942015365858e6
 res = compsep(comps, freqs, Nmat, obs, x₀ = [-3, 1.54, 20.0])
 
 @test isapprox(res["params"], [-3, 1.54, 20.0], rtol=0.01)
